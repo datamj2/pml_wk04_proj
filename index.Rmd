@@ -1,0 +1,111 @@
+---
+title: "Untitled"
+author: "MJ"
+date: "April 24, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+knitr::opts_chunk$set(message = F)
+```
+
+##Exploratory analysis
+```{r}
+setwd("/Users/mjlaptop3/0 coursera datascience/practical machine learning/0 week04/0 project/pml_wk04_proj")
+tr<-read.table("pml-training.csv",sep=",",na.strings=c("","NA"),header=T)
+ts<-read.csv("pml-testing.csv")
+dm<-dim(tr)
+dm
+```
+
+First 15 columns
+```{r}
+str(tr,list.len=15)
+```
+
+Last 10 columns
+```{r}
+str(tr[,150:160])
+```
+
+##Split into training and test sets
+60% training, 40% test.
+```{r message=F}
+library(caret)
+set.seed(8876)
+ind<-createDataPartition(tr$classe,p=0.70,list=F)
+tr2<-tr[ind,]
+ts2<-tr[-ind,]
+# ind2<-createDataPartition(ts_temp$classe,p=0.5,list=F)
+# ts2<-ts_temp[ind2,]
+# tv2<-ts_temp[-ind2,]
+```
+Training set:
+```{r}
+dim(tr2)
+```
+
+Test set:
+```{r}
+dim(ts2)
+```
+
+
+##Feature selection
+```{r}
+
+cnt_na<-matrix(0,nrow=1,ncol=dm[2])
+for (i in 1:dm[2]) {
+        ind<-is.na(tr[,i])
+        ind<-which(ind==T)
+        cnt_na[1,i]<-length(ind)/dm[1]
+}
+
+na_row<-cnt_na[1,]
+plot(na_row)
+```
+
+Remove columns from training set with high proportions of NA. Remove first six columns from training set.
+```{r}
+tr2<-tr2[colSums(!is.na(tr)) > nrow(tr) * 0.5]
+tr2<-tr2[,-c(1:6)]
+dim(tr2)
+```
+
+
+##Machine learning
+Train using random forest method.
+```{r message=F}
+
+# the following parallel and trainControl is taken from https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
+registerDoParallel(cluster)
+
+fitControl <- trainControl(method = "cv",
+                           number = 5,
+                           allowParallel = TRUE)
+
+# code for training with random forest method
+# set.seed(1452)
+# mr2<-train(classe ~ .,data=tr2,method="rf",trControl=fitControl)
+
+stopCluster(cluster)
+registerDoSEQ()
+
+# since this code takes 9 minutes to run on my computer
+# I have run it previously and saved it in order to load it now
+load("mr2_60.rda")
+# summary(mr2$finalModel)
+# mr2$finalModel
+mr2
+```
+
+Tree.
+```{r}
+library(rattle)
+# library(rpart.plot)
+# fancyRpartPlot(mr2$finalModel)
+```
