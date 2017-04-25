@@ -45,7 +45,7 @@ fig1_cap="Figure 1. goes here"
 ##Split into training and test sets
 Give rationale/motivation here for random forest, cross-validation method. Describe mechanics of both. Define oob (as estimate of test set error), and rationale for splitting data set at 80/20.
 80% training, 20% test.
-```{r}
+```{r cache=T}
 library(caret)
 set.seed(8876)
 ind<-createDataPartition(tr$classe,p=0.80,list=F)
@@ -66,14 +66,14 @@ Columns with high numbers of NA will add to the computational demands of trainin
 ```{r}
 tr2<-tr2[colSums(!is.na(tr)) > nrow(tr) * 0.5]
 tr2<-tr2[,-c(1:6)]
-cat(sprintf('Training set dimensions after feature selection, rows x cols: %i x %i ',dim(ts2)[1],dim(ts2)[2]))
+cat(sprintf('Training set dimensions after feature selection, rows x cols: %i x %i ',dim(tr2)[1],dim(tr2)[2]))
 ```
-Note that only the partioned training set will be reduced in (column) size: this step is not necessary for the partioned test set.
+Note that only the partioned training set will be reduced in (column) size: removing columns from the partioned test set is not necessary.
 
 ##Machine learning
 Describe random forest mechanics here. Train using random forest method.
 ```{r }
-
+library(caret)
 # the following parallel and trainControl is taken from https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md
 library(parallel)
 library(doParallel)
@@ -95,13 +95,25 @@ registerDoSEQ()
 # I have run it previously and saved it in order to load it now
 load("mr2_80.rda")
 # summary(mr2$finalModel)
-# mr2$finalModel
+ # mr2$finalModel
 mr2
 ```
 
-Tree.
+####In and out of sample error
 ```{r}
-library(rattle)
-# library(rpart.plot)
-# fancyRpartPlot(mr2$finalModel)
+pr2<-predict(mr2,tr2)
+ind<-pr2==tr2$classe
+ind2<-pr2!=tr2$classe
+cat(sprintf('In sample error(%%) %2.4f (accuracy: %2.4f)',100*(sum(ind2)/length(tr2$class)), 100*(sum(ind)/length(tr2$class))))
+
+ps2<-predict(mr2,ts2)
+ind<-ps2==ts2$classe
+ind2<-ps2!=ts2$classe
+cat(sprintf('Out of sample error(%%)  %2.4f (accuracy: %2.4f)',100*(sum(ind2)/length(ts2$class)), 100*(sum(ind)/length(ts2$class))))
+```
+
+####OOB error
+```{r}
+oob<-mr2$finalModel$err.rate[500,1]*100
+cat(sprintf('OOB error(%%)  %2.4f (accuracy: %2.4f)',oob,100-oob))
 ```

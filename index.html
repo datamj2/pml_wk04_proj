@@ -147,8 +147,8 @@ Figure 1. goes here
 <div id="feature-selection" class="section level2">
 <h2>Feature selection</h2>
 <p>Columns with high numbers of NA will add to the computational demands of training the machine language algorithm, but many not appreciably increasing its predictive accuracy. For that reason, the columns containing large proportions of NAs will be removed from the training set. The first six columns from training set will also be removed, because they are not expected to add much to the final model accuracy (the seventh column may be useful). Therefore, the machine language algorithm will be trained using the windowed accelerometer data. The original test set is also structured in a similar way to the original training set - that is, most of the acceleromter information is in the non-NA columns, necessitating predictions based mainly on the windowed accelerometer data.</p>
-<pre><code>Training set dimensions after feature selection, rows x cols: 3923 x 160 </code></pre>
-<p>Note that only the partioned training set will be reduced in (column) size: this step is not necessary for the partioned test set.</p>
+<pre><code>Training set dimensions after feature selection, rows x cols: 15699 x 54 </code></pre>
+<p>Note that only the partioned training set will be reduced in (column) size: removing columns from the partioned test set is not necessary.</p>
 </div>
 <div id="machine-learning" class="section level2">
 <h2>Machine learning</h2>
@@ -171,7 +171,15 @@ Resampling results across tuning parameters:
 
 Accuracy was used to select the optimal model using  the largest value.
 The final value used for the model was mtry = 27. </code></pre>
-<p>Tree.</p>
+<div id="in-and-out-of-sample-error" class="section level4">
+<h4>In and out of sample error</h4>
+<pre><code>In sample error(%) 0.0000 (accuracy: 100.0000)</code></pre>
+<pre><code>Out of sample error(%)  0.2038 (accuracy: 99.7962)</code></pre>
+</div>
+<div id="oob-error" class="section level4">
+<h4>OOB error</h4>
+<pre><code>OOB error(%)  0.1847 (accuracy: 99.8153)</code></pre>
+</div>
 </div>
 
 
