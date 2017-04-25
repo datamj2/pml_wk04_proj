@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Predicting type of activity from movement data"
 author: "MJ"
 date: "April 24, 2017"
 output: html_document
@@ -8,53 +8,27 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F)
 knitr::opts_chunk$set(message = F)
+knitr::opts_chunk$set(comment = NA)
 ```
 
+I used a publicly available human activity dataset to predict six types of exercise activity. Data was collected from six participants who wore accelerometers strapped to their persons (belt, forearm, arm) and to a dumbell. The subjects performed barbell lifts five  ways: both incorrectly and correctly. The accelerometer data was then used to train a machine learning algorithm and assess its performance on a hold-out data set.
+
+
 ##Exploratory analysis
+The original training and test sets were obtained from ******.
 ```{r}
 setwd("/Users/mjlaptop3/0 coursera datascience/practical machine learning/0 week04/0 project/pml_wk04_proj")
 tr<-read.table("pml-training.csv",sep=",",na.strings=c("","NA"),header=T)
 ts<-read.csv("pml-testing.csv")
+
+cat(sprintf('Original training set dimensions, rows x cols: %i x %i ',dim(tr)[1],dim(tr)[2]))
+```
+There are 160 features (columns) in the data set. The first seven columns are consist of an index column, name, three timestamp columns, a new_window and a num_window column. The outcome variable is 'classe', which is a factor variable coding the 5 activity types (A-E). There appear to be a large number of columns that contain mostly NA values. The remaining columns appear to contain the accelerometer data. The new_window column contains two entries: "no" and "yes". The "yes" rows contain aggregated accelerometer data and the raw accelerometer data. The aggregated data appear to occur only in the NA columns, and seem to be the only non-NA entries in these columns, at least for most of the rows. Some of the NA-columns are also coded as factors, while others are integer or numeric. The rest of the acceleromter data columns are coded as numeric or integer values.
+
+Figure 1 is a plot of the proportion of NA values for each column. The columns have either 0% NA values or 97.9% NA values, with about twice as many of the latter compared to the former.
+
+```{r fig.cap=fig1_cap}
 dm<-dim(tr)
-dm
-```
-
-First 15 columns
-```{r}
-str(tr,list.len=15)
-```
-
-Last 10 columns
-```{r}
-str(tr[,150:160])
-```
-
-##Split into training and test sets
-60% training, 40% test.
-```{r message=F}
-library(caret)
-set.seed(8876)
-ind<-createDataPartition(tr$classe,p=0.70,list=F)
-tr2<-tr[ind,]
-ts2<-tr[-ind,]
-# ind2<-createDataPartition(ts_temp$classe,p=0.5,list=F)
-# ts2<-ts_temp[ind2,]
-# tv2<-ts_temp[-ind2,]
-```
-Training set:
-```{r}
-dim(tr2)
-```
-
-Test set:
-```{r}
-dim(ts2)
-```
-
-
-##Feature selection
-```{r}
-
 cnt_na<-matrix(0,nrow=1,ncol=dm[2])
 for (i in 1:dm[2]) {
         ind<-is.na(tr[,i])
@@ -64,19 +38,41 @@ for (i in 1:dm[2]) {
 
 na_row<-cnt_na[1,]
 plot(na_row)
+
+fig1_cap="Figure 1. goes here"
 ```
 
-Remove columns from training set with high proportions of NA. Remove first six columns from training set.
+##Split into training and test sets
+Give rationale/motivation here for random forest, cross-validation method. Describe mechanics of both. Define oob (as estimate of test set error), and rationale for splitting data set at 80/20.
+80% training, 20% test.
+```{r}
+library(caret)
+set.seed(8876)
+ind<-createDataPartition(tr$classe,p=0.80,list=F)
+tr2<-tr[ind,]
+ts2<-tr[-ind,]
+
+```
+
+```{r}
+cat(sprintf('Training set dimensions after partition, rows x cols: %i x %i ',dim(tr2)[1],dim(tr2)[2]))
+cat(sprintf('Test set dimensions after partition, rows x cols: %i x %i ',dim(ts2)[1],dim(ts2)[2]))
+```
+
+
+##Feature selection
+Columns with high numbers of NA will add to the computational demands of training the machine language algorithm, but many not appreciably increasing its predictive accuracy. For that reason, the columns containing large proportions of NAs will be removed from the training set. The first six columns from training set will also be removed, because they are not expected to add much to the final model accuracy (the seventh column may be useful). Therefore, the machine language algorithm will be trained using the windowed accelerometer data. The original test set is also structured in a similar way to the original training set - that is, most of the acceleromter information is in the non-NA columns, necessitating predictions based mainly on the windowed accelerometer data.
+
 ```{r}
 tr2<-tr2[colSums(!is.na(tr)) > nrow(tr) * 0.5]
 tr2<-tr2[,-c(1:6)]
-dim(tr2)
+cat(sprintf('Training set dimensions after feature selection, rows x cols: %i x %i ',dim(ts2)[1],dim(ts2)[2]))
 ```
-
+Note that only the partioned training set will be reduced in (column) size: this step is not necessary for the partioned test set.
 
 ##Machine learning
-Train using random forest method.
-```{r message=F}
+Describe random forest mechanics here. Train using random forest method.
+```{r }
 
 # the following parallel and trainControl is taken from https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md
 library(parallel)
@@ -97,7 +93,7 @@ registerDoSEQ()
 
 # since this code takes 9 minutes to run on my computer
 # I have run it previously and saved it in order to load it now
-load("mr2_60.rda")
+load("mr2_80.rda")
 # summary(mr2$finalModel)
 # mr2$finalModel
 mr2
