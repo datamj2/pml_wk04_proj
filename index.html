@@ -231,9 +231,10 @@ insample_acc&lt;-100*(sum(ind)/length(tr2$class)) # in sample accuracy</code></p
 <pre class="r"><code>ps2&lt;-predict(mr2,ts2)
 ind&lt;-ps2==ts2$classe
 ind2&lt;-ps2!=ts2$classe
-outsample_err&lt;-100*(sum(ind2)/length(ts2$class)) # in sample error
-outsample_acc&lt;-100*(sum(ind)/length(ts2$class)) # in sample accuracy</code></pre>
+outsample_err&lt;-100*(sum(ind2)/length(ts2$class)) # out of  sample error
+outsample_acc&lt;-100*(sum(ind)/length(ts2$class)) # out of sample accuracy</code></pre>
 <pre><code>Out of sample error(%)  0.2038 (accuracy: 99.7962)</code></pre>
+<p>As expected, the out of sample error is higher than the in sample error.</p>
 </div>
 <div id="oob-error" class="section level4">
 <h4>OOB error</h4>

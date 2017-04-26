@@ -133,13 +133,14 @@ cat(sprintf('In sample error(%%) %2.4f (accuracy: %2.4f)',insample_err,insample_
 ps2<-predict(mr2,ts2)
 ind<-ps2==ts2$classe
 ind2<-ps2!=ts2$classe
-outsample_err<-100*(sum(ind2)/length(ts2$class)) # in sample error
-outsample_acc<-100*(sum(ind)/length(ts2$class)) # in sample accuracy
+outsample_err<-100*(sum(ind2)/length(ts2$class)) # out of  sample error
+outsample_acc<-100*(sum(ind)/length(ts2$class)) # out of sample accuracy
 ```
 
 ```{r}
 cat(sprintf('Out of sample error(%%)  %2.4f (accuracy: %2.4f)',outsample_err,outsample_acc ))
 ```
+As expected, the out of sample error is higher than the in sample error.
 
 ####OOB error
 The oob error is listed in the final model, and can be calculated from the confusion matrix (sum of diagonal/sum of entire confusion matrix). It is reprinted to 4 decimal places below. The OOB error differs from the in-sample error (see above) because the in-sample error is calculated from the model predictions on the entire new training set, while the OOB error is calculated on a subset of the new training set (calculated on the out-of-bag observations).
