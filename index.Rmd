@@ -16,17 +16,18 @@ I used a publicly available human activity dataset to predict six types of exerc
 
 
 ##Exploratory analysis
-The original training and test sets were obtained from ******.
+The original training and test sets were obtained from ******. The structure of the first 10 columns is shown below.
 ```{r}
 setwd("/Users/mjlaptop3/0 coursera datascience/practical machine learning/0 week04/0 project/pml_wk04_proj")
 tr<-read.table("pml-training.csv",sep=",",na.strings=c("","NA"),header=T)
 ts<-read.csv("pml-testing.csv")
+str(tr[,1:10])
 
 cat(sprintf('Original training set dimensions, rows x cols: %i x %i ',dim(tr)[1],dim(tr)[2]))
 ```
 There are 160 features (columns) in the data set. The first seven columns are consist of an index column, name, three timestamp columns, a new_window and a num_window column. The outcome variable is 'classe', which is a factor variable coding the 5 activity types (A-E). There appear to be a large number of columns that contain mostly NA values. The remaining columns appear to contain the accelerometer data. The new_window column contains two entries: "no" and "yes". The "yes" rows contain aggregated accelerometer data and the raw accelerometer data. The aggregated data appear to occur only in the NA columns, and seem to be the only non-NA entries in these columns, at least for most of the rows. Some of the NA-columns are also coded as factors, while others are integer or numeric. The rest of the acceleromter data columns are coded as numeric or integer values.
 
-Figure 1 is a plot of the proportion of NA values for each column. The columns have either 0% NA values or 97.9% NA values, with about twice as many of the latter compared to the former.
+Figure 1 is a plot of the proportion of NA values for each column. The columns have either 0% NA values or 97.9% NA values, with about 1.7 times as many of the latter compared to the former.
 
 ```{r fig.cap=fig1_cap}
 dm<-dim(tr)
@@ -38,97 +39,122 @@ for (i in 1:dm[2]) {
 }
 
 na_row<-cnt_na[1,]
-plot(na_row)
+plot(na_row,main="Figure 1",xlab="column index",ylab="proportion of NAs")
 
-fig1_cap="Figure 1. goes here"
+fig1_cap="Figure 1. Proportion of NAs for each predictor. There are two levels: columns with no NAs (n=60), or columns with 0.979 NAs (n=100)"
 ```
 
 ##Machine learning considerations
 I will use the random forest method to train the predictive model because of its high accuracy (ref). The random forest uses bagging, which improves accuracy and reduces variance, but reduces interpretability. At each split (node) of the tree, a different random subset of predictors is used, rather than splitting each node using the full set of predictors. This reduces correlations amongst the bagged trees, due for example, to the presence of a few strong predictors. Thus, using a random subset of predictors (where the size of the subset does not change) reduces variability and increases the reliability of the model. 
 
-The caret package in R uses a bootstrap method (by default) to partition the data (n=25). This can be time-consuming for this data set when using a personal computer. Another method to partition the data is k-fold cross validation (see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md). It has been noted that k=5 reduces computational time without greatly reducing accuracy. With this partitioning method the data set is partitioned 5 times, and the model trained on the resulting partitions.
+####Cross-validation method
+The caret package in R uses a bootstrap method (by default) to partition the data (n=25). This can be time-consuming for this data set when using a personal computer. Another method to partition the data is k-fold cross validation (cv, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md). It has been noted that k=5 reduces computational time without greatly reducing accuracy. With this partitioning method the data set is partitioned 5 times, and the model trained on the resulting partitions.
 
 ####Out-of-bag error
-Because of the way the caret package builds the random forest model (using either the bootstrap or the cv method), a separate cross-validation is not necessary. In effect, cross-validation occurs during model building. For each partition of the training set, that is, for each bag, there is also a validation set, which contain the out-of-bag (OOB) observations. The observations in the validation sets can be used to estimate the error on a test set (ie hold-out set), that is, a set that was not used to train the model. This is known as OOB error, and is a good predictor of error in a hold-out set.
+Because of the way the caret package builds the random forest model (using either the bootstrap or the cv method), a separate cross-validation step is not necessary. In effect, cross-validation occurs during model building. For each partition of the training set, that is, for each bag, there is also a validation set, which contain the out-of-bag (OOB) observations. The observations in the validation sets can be used to estimate the error on a test set (ie hold-out set), that is, a set that was not used to train the model. This is known as OOB error, and is a good predictor of error in a hold-out set.
 
-If the random forest method does not generate high enough accuracy (>99%, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md), then a second model will be built using the general bagging method (gbm) in caret.
+If the random forest method does not generate high enough accuracy (>99%, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md), then a second model will be built using the general bagging method (gbm) in caret. This high accuracy is necessary because the probabililty of correctly predicting 20 cases is 0.99^20 = 0.82.
 
 ##Split into training and test sets
 Because the original training data set is large (nrow=19622), I can use a 60-20-20 split resulting in: a new training set, a validation set, and a test or hold-out set. Because I'm using the random forest method in the caret package - which automatically performs cross-validation (see above) - I will partition the original training data using an 80-20 split: a new training set, and a hold-out set. Note that if the OOB error is used, this partitioning is not necessary, but I will use a hold-out set (20% split) as a second check on the generalizability of the model.
 
-```{r cache=T}
+```{r cache=T, echo=T}
 library(caret)
 set.seed(8876)
 ind<-createDataPartition(tr$classe,p=0.80,list=F)
 tr2<-tr[ind,]
 ts2<-tr[-ind,]
-
 ```
 
 ```{r}
-cat(sprintf('New training set dimensions after partition, rows x cols: %i x %i ',dim(tr2)[1],dim(tr2)[2]))
-cat(sprintf('hold out set dimensions after partition, rows x cols: %i x %i ',dim(ts2)[1],dim(ts2)[2]))
+cat(sprintf('New training set dimensions after partition (rows x cols): %i x %i ',dim(tr2)[1],dim(tr2)[2]))
+cat(sprintf('hold out set dimensions after partition (rows x cols): %i x %i ',dim(ts2)[1],dim(ts2)[2]))
 ```
 
 
 ##Feature selection
 Columns with high numbers of NA will add to the computational demands of training the machine language algorithm, but may not appreciably increase the predictive accuracy. For that reason, the columns containing large proportions of NAs will be removed from the training set. The first six columns from training set will also be removed, because they are not expected to add much to the final model accuracy (the seventh column may be useful). Therefore, the machine language algorithm will be trained using mainly the windowed accelerometer data.
 
-```{r}
+```{r echo=T}
 tr2<-tr2[colSums(!is.na(tr)) > nrow(tr) * 0.5]
 tr2<-tr2[,-c(1:6)]
-cat(sprintf('Training set dimensions after feature selection, rows x cols: %i x %i ',dim(tr2)[1],dim(tr2)[2]))
+```
+
+```{r}
+cat(sprintf('Training set dimensions after feature selection (rows x cols): %i x %i ',dim(tr2)[1],dim(tr2)[2]))
 ```
 Note that only the new training set will be reduced in (column) size: removing columns from the hold-out set is not necessary.
 
 ##Results
 
-####Random forest
-
-```{r }
-library(caret)
+####Random forest model
+```{r eval=F,echo=T}
 # the following parallel and trainControl is taken from https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md
+fitControl <- trainControl(method = "cv",
+                           number = 5,
+                           allowParallel = TRUE)
 library(parallel)
 library(doParallel)
 cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
 registerDoParallel(cluster)
 
-fitControl <- trainControl(method = "cv",
-                           number = 5,
-                           allowParallel = TRUE)
-
-# code for training with random forest method
-# set.seed(1452)
-# mr2<-train(classe ~ .,data=tr2,method="rf",trControl=fitControl)
+set.seed(1452)
+mr2<-train(classe ~ .,data=tr2,method="rf",trControl=fitControl)
 
 stopCluster(cluster)
 registerDoSEQ()
+```
 
-# I have run it previously and saved it in order to load it now
+```{r }
+# I have trained the model previously and saved it in order to load it now
 load("mr2_80.rda")
 # summary(mr2$finalModel)
  # mr2$finalModel
 mr2
 ```
+The information above confirms that a 5-fold cross-validation resampling method was used, and that the highest accuracy was obtained with a random subset of 27 predictors (mtry=27) used at each node.
+
 
 ####In and out of sample error
 In sample error is the error for the predictions on the new training set (not the original training set). Out of sample error is the prediction error on the hold-out set.
-```{r}
+```{r echo=T}
 pr2<-predict(mr2,tr2)
 ind<-pr2==tr2$classe
 ind2<-pr2!=tr2$classe
-cat(sprintf('In sample error(%%) %2.4f (accuracy: %2.4f)',100*(sum(ind2)/length(tr2$class)), 100*(sum(ind)/length(tr2$class))))
+insample_err<-100*(sum(ind2)/length(tr2$class)) # in sample error
+insample_acc<-100*(sum(ind)/length(tr2$class)) # in sample accuracy
+```
 
+```{r}
+cat(sprintf('In sample error(%%) %2.4f (accuracy: %2.4f)',insample_err,insample_acc ))
+```
+
+```{r echo=T}
 ps2<-predict(mr2,ts2)
 ind<-ps2==ts2$classe
 ind2<-ps2!=ts2$classe
-cat(sprintf('Out of sample error(%%)  %2.4f (accuracy: %2.4f)',100*(sum(ind2)/length(ts2$class)), 100*(sum(ind)/length(ts2$class))))
+outsample_err<-100*(sum(ind2)/length(ts2$class)) # in sample error
+outsample_acc<-100*(sum(ind)/length(ts2$class)) # in sample accuracy
+```
+
+```{r}
+cat(sprintf('Out of sample error(%%)  %2.4f (accuracy: %2.4f)',outsample_err,outsample_acc ))
 ```
 
 ####OOB error
-The out-of-bag error is shown below. It agrees quite closely with the out-of-sample error. Because both error estimates are so low, or in other words, because the prediction accuracy is >99%, there is no need to train a second model using a different method.
+The oob error is listed in the final model, and can be calculated from the confusion matrix (sum of diagonal/sum of entire confusion matrix). It is reprinted to 4 decimal places below. The OOB error differs from the in-sample error (see above) because the in-sample error is calculated from the model predictions on the entire new training set, while the OOB error is calculated on a subset of the new training set (calculated on the out-of-bag observations).
+
+```{r echo=T}
+mr2$finalModel
+```
+
 ```{r}
 oob<-mr2$finalModel$err.rate[500,1]*100
+## OR
+# oob<-100-100*sum(diag(cm[,1:5]))/sum((cm[,1:5]))
+# oob_acc<-100-oob
 cat(sprintf('OOB error(%%)  %2.4f (accuracy: %2.4f)',oob,100-oob))
 ```
 
+The out-of-bag error agrees quite closely with the out-of-sample error. Because both error estimates are so low, or in other words, because the prediction accuracy is so high (>99%), there is no need to train a second model using a different method.
+.
