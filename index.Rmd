@@ -16,7 +16,7 @@ I used a publicly available human activity dataset to predict six types of exerc
 
 
 ##Exploratory analysis
-The original training and test sets were obtained from ******. The structure of the first 10 columns is shown below.
+The original training and test sets are described at http://groupware.les.inf.puc-rio.br/har (see WLE Dataset). The structure of the first 10 columns is shown below.
 ```{r}
 setwd("/Users/mjlaptop3/0 coursera datascience/practical machine learning/0 week04/0 project/pml_wk04_proj")
 tr<-read.table("pml-training.csv",sep=",",na.strings=c("","NA"),header=T)
@@ -45,7 +45,7 @@ fig1_cap="Figure 1. Proportion of NAs for each predictor. There are two levels: 
 ```
 
 ##Machine learning considerations
-I will use the random forest method to train the predictive model because of its high accuracy (ref). The random forest uses bagging, which improves accuracy and reduces variance, but reduces interpretability. At each split (node) of the tree, a different random subset of predictors is used, rather than splitting each node using the full set of predictors. This reduces correlations amongst the bagged trees, due for example, to the presence of a few strong predictors. Thus, using a random subset of predictors (where the size of the subset does not change) reduces variability and increases the reliability of the model. 
+I will use the random forest method to train the predictive model because of its high accuracy (as noted in the lecture). The random forest uses bagging, which improves accuracy and reduces variance, but reduces interpretability (ref: *Introduction to Statistical Learning (6th printing)*, by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani, Springer Science+Business Media, NY). At each split (node) of the tree, a different random subset of predictors is used, rather than splitting each node using the full set of predictors. This reduces correlations amongst the bagged trees, due for example, to the presence of a few strong predictors. Thus, using a random subset of predictors (where the size of the subset does not change) reduces variability and increases the reliability of the model. 
 
 ####Cross-validation method
 The caret package in R uses a bootstrap method (by default) to partition the data (n=25). This can be time-consuming for this data set when using a personal computer. Another method to partition the data is k-fold cross validation (cv, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md). It has been noted that k=5 reduces computational time without greatly reducing accuracy. With this partitioning method the data set is partitioned 5 times, and the model trained on the resulting partitions.
