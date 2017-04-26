@@ -1,7 +1,7 @@
 ---
 title: "Predicting type of activity from movement data"
 author: "MJ"
-date: "April 24, 2017"
+date: "April 26, 2017"
 output: html_document
 ---
 
@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = F)
 knitr::opts_chunk$set(message = F)
 knitr::opts_chunk$set(comment = NA)
+# https://datamj2.github.io/pml_wk04_proj/
 ```
 
 I used a publicly available human activity dataset to predict six types of exercise activity. Data was collected from six participants who wore accelerometers strapped to their persons (belt, forearm, arm) and to a dumbell. The subjects performed barbell lifts five  ways: both incorrectly and correctly. The accelerometer data was then used to train a machine learning algorithm and assess its performance on a hold-out data set.
@@ -42,9 +43,19 @@ plot(na_row)
 fig1_cap="Figure 1. goes here"
 ```
 
+##Machine learning considerations
+I will use the random forest method to train the predictive model because of its high accuracy (ref). The random forest uses bagging, which improves accuracy and reduces variance, but reduces interpretability. At each split (node) of the tree, a different random subset of predictors is used, rather than splitting each node using the full set of predictors. This reduces correlations amongst the bagged trees, due for example, to the presence of a few strong predictors. Thus, using a random subset of predictors (where the size of the subset does not change) reduces variability and increases the reliability of the model. 
+
+The caret package in R uses a bootstrap method (by default) to partition the data (n=25). This can be time-consuming for this data set when using a personal computer. Another method to partition the data is k-fold cross validation (see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md). It has been noted that k=5 reduces computational time without greatly reducing accuracy. With this partitioning method the data set is partitioned 5 times, and the model trained on the resulting partitions.
+
+####Out-of-bag error
+Because of the way the caret package builds the random forest model (using either the bootstrap or the cv method), a separate cross-validation is not necessary. In effect, cross-validation occurs during model building. For each partition of the training set, that is, for each bag, there is also a validation set, which contain the out-of-bag (OOB) observations. The observations in the validation sets can be used to estimate the error on a test set (ie hold-out set), that is, a set that was not used to train the model. This is known as OOB error, and is a good predictor of error in a hold-out set.
+
+If the random forest method does not generate high enough accuracy (>99%, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md), then a second model will be built using the general bagging method (gbm) in caret.
+
 ##Split into training and test sets
-Give rationale/motivation here for random forest, cross-validation method. Describe mechanics of both. Define oob (as estimate of test set error), and rationale for splitting data set at 80/20.
-80% training, 20% test.
+Because the original training data set is large (nrow=19622), I can use a 60-20-20 split resulting in: a new training set, a validation set, and a test or hold-out set. Because I'm using the random forest method in the caret package - which automatically performs cross-validation (see above) - I will partition the original training data using an 80-20 split: a new training set, and a hold-out set. Note that if the OOB error is used, this partitioning is not necessary, but I will use a hold-out set (20% split) as a second check on the generalizability of the model.
+
 ```{r cache=T}
 library(caret)
 set.seed(8876)
@@ -55,23 +66,25 @@ ts2<-tr[-ind,]
 ```
 
 ```{r}
-cat(sprintf('Training set dimensions after partition, rows x cols: %i x %i ',dim(tr2)[1],dim(tr2)[2]))
-cat(sprintf('Test set dimensions after partition, rows x cols: %i x %i ',dim(ts2)[1],dim(ts2)[2]))
+cat(sprintf('New training set dimensions after partition, rows x cols: %i x %i ',dim(tr2)[1],dim(tr2)[2]))
+cat(sprintf('hold out set dimensions after partition, rows x cols: %i x %i ',dim(ts2)[1],dim(ts2)[2]))
 ```
 
 
 ##Feature selection
-Columns with high numbers of NA will add to the computational demands of training the machine language algorithm, but many not appreciably increasing its predictive accuracy. For that reason, the columns containing large proportions of NAs will be removed from the training set. The first six columns from training set will also be removed, because they are not expected to add much to the final model accuracy (the seventh column may be useful). Therefore, the machine language algorithm will be trained using the windowed accelerometer data. The original test set is also structured in a similar way to the original training set - that is, most of the acceleromter information is in the non-NA columns, necessitating predictions based mainly on the windowed accelerometer data.
+Columns with high numbers of NA will add to the computational demands of training the machine language algorithm, but may not appreciably increase the predictive accuracy. For that reason, the columns containing large proportions of NAs will be removed from the training set. The first six columns from training set will also be removed, because they are not expected to add much to the final model accuracy (the seventh column may be useful). Therefore, the machine language algorithm will be trained using mainly the windowed accelerometer data.
 
 ```{r}
 tr2<-tr2[colSums(!is.na(tr)) > nrow(tr) * 0.5]
 tr2<-tr2[,-c(1:6)]
 cat(sprintf('Training set dimensions after feature selection, rows x cols: %i x %i ',dim(tr2)[1],dim(tr2)[2]))
 ```
-Note that only the partioned training set will be reduced in (column) size: removing columns from the partioned test set is not necessary.
+Note that only the new training set will be reduced in (column) size: removing columns from the hold-out set is not necessary.
 
-##Machine learning
-Describe random forest mechanics here. Train using random forest method.
+##Results
+
+####Random forest
+
 ```{r }
 library(caret)
 # the following parallel and trainControl is taken from https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md
@@ -91,7 +104,6 @@ fitControl <- trainControl(method = "cv",
 stopCluster(cluster)
 registerDoSEQ()
 
-# since this code takes 9 minutes to run on my computer
 # I have run it previously and saved it in order to load it now
 load("mr2_80.rda")
 # summary(mr2$finalModel)
@@ -100,6 +112,7 @@ mr2
 ```
 
 ####In and out of sample error
+In sample error is the error for the predictions on the new training set (not the original training set). Out of sample error is the prediction error on the hold-out set.
 ```{r}
 pr2<-predict(mr2,tr2)
 ind<-pr2==tr2$classe
@@ -113,7 +126,9 @@ cat(sprintf('Out of sample error(%%)  %2.4f (accuracy: %2.4f)',100*(sum(ind2)/le
 ```
 
 ####OOB error
+The out-of-bag error is shown below. It agrees quite closely with the out-of-sample error. Because both error estimates are so low, or in other words, because the prediction accuracy is >99%, there is no need to train a second model using a different method.
 ```{r}
 oob<-mr2$finalModel$err.rate[500,1]*100
 cat(sprintf('OOB error(%%)  %2.4f (accuracy: %2.4f)',oob,100-oob))
 ```
+

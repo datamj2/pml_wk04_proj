@@ -11,7 +11,7 @@
 
 <meta name="author" content="MJ" />
 
-<meta name="date" content="2017-04-24" />
+<meta name="date" content="2017-04-26" />
 
 <title>Predicting type of activity from movement data</title>
 
@@ -119,7 +119,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Predicting type of activity from movement data</h1>
 <h4 class="author"><em>MJ</em></h4>
-<h4 class="date"><em>April 24, 2017</em></h4>
+<h4 class="date"><em>April 26, 2017</em></h4>
 
 </div>
 
@@ -138,21 +138,32 @@ Figure 1. goes here
 </p>
 </div>
 </div>
+<div id="machine-learning-considerations" class="section level2">
+<h2>Machine learning considerations</h2>
+<p>I will use the random forest method to train the predictive model because of its high accuracy (ref). The random forest uses bagging, which improves accuracy and reduces variance, but reduces interpretability. At each split (node) of the tree, a different random subset of predictors is used, rather than splitting each node using the full set of predictors. This reduces correlations amongst the bagged trees, due for example, to the presence of a few strong predictors. Thus, using a random subset of predictors (where the size of the subset does not change) reduces variability and increases the reliability of the model.</p>
+<p>The caret package in R uses a bootstrap method (by default) to partition the data (n=25). This can be time-consuming for this data set when using a personal computer. Another method to partition the data is k-fold cross validation (see <a href="https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md" class="uri">https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md</a>). It has been noted that k=5 reduces computational time without greatly reducing accuracy. With this partitioning method the data set is partitioned 5 times, and the model trained on the resulting partitions.</p>
+<div id="out-of-bag-error" class="section level4">
+<h4>Out-of-bag error</h4>
+<p>Because of the way the caret package builds the random forest model (using either the bootstrap or the cv method), a separate cross-validation is not necessary. In effect, cross-validation occurs during model building. For each partition of the training set, that is, for each bag, there is also a validation set, which contain the out-of-bag (OOB) observations. The observations in the validation sets can be used to estimate the error on a test set (ie hold-out set), that is, a set that was not used to train the model. This is known as OOB error, and is a good predictor of error in a hold-out set.</p>
+<p>If the random forest method does not generate high enough accuracy (&gt;99%, see <a href="https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md" class="uri">https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md</a>), then a second model will be built using the general bagging method (gbm) in caret.</p>
+</div>
+</div>
 <div id="split-into-training-and-test-sets" class="section level2">
 <h2>Split into training and test sets</h2>
-<p>Give rationale/motivation here for random forest, cross-validation method. Describe mechanics of both. Define oob (as estimate of test set error), and rationale for splitting data set at 80/20. 80% training, 20% test.</p>
-<pre><code>Training set dimensions after partition, rows x cols: 15699 x 160 </code></pre>
-<pre><code>Test set dimensions after partition, rows x cols: 3923 x 160 </code></pre>
+<p>Because the original training data set is large (nrow=19622), I can use a 60-20-20 split resulting in: a new training set, a validation set, and a test or hold-out set. Because I’m using the random forest method in the caret package - which automatically performs cross-validation (see above) - I will partition the original training data using an 80-20 split: a new training set, and a hold-out set. Note that if the OOB error is used, this partitioning is not necessary, but I will use a hold-out set (20% split) as a second check on the generalizability of the model.</p>
+<pre><code>New training set dimensions after partition, rows x cols: 15699 x 160 </code></pre>
+<pre><code>hold out set dimensions after partition, rows x cols: 3923 x 160 </code></pre>
 </div>
 <div id="feature-selection" class="section level2">
 <h2>Feature selection</h2>
-<p>Columns with high numbers of NA will add to the computational demands of training the machine language algorithm, but many not appreciably increasing its predictive accuracy. For that reason, the columns containing large proportions of NAs will be removed from the training set. The first six columns from training set will also be removed, because they are not expected to add much to the final model accuracy (the seventh column may be useful). Therefore, the machine language algorithm will be trained using the windowed accelerometer data. The original test set is also structured in a similar way to the original training set - that is, most of the acceleromter information is in the non-NA columns, necessitating predictions based mainly on the windowed accelerometer data.</p>
+<p>Columns with high numbers of NA will add to the computational demands of training the machine language algorithm, but may not appreciably increase the predictive accuracy. For that reason, the columns containing large proportions of NAs will be removed from the training set. The first six columns from training set will also be removed, because they are not expected to add much to the final model accuracy (the seventh column may be useful). Therefore, the machine language algorithm will be trained using mainly the windowed accelerometer data.</p>
 <pre><code>Training set dimensions after feature selection, rows x cols: 15699 x 54 </code></pre>
-<p>Note that only the partioned training set will be reduced in (column) size: removing columns from the partioned test set is not necessary.</p>
+<p>Note that only the new training set will be reduced in (column) size: removing columns from the hold-out set is not necessary.</p>
 </div>
-<div id="machine-learning" class="section level2">
-<h2>Machine learning</h2>
-<p>Describe random forest mechanics here. Train using random forest method.</p>
+<div id="results" class="section level2">
+<h2>Results</h2>
+<div id="random-forest" class="section level4">
+<h4>Random forest</h4>
 <pre><code>Random Forest 
 
 15699 samples
@@ -171,13 +182,16 @@ Resampling results across tuning parameters:
 
 Accuracy was used to select the optimal model using  the largest value.
 The final value used for the model was mtry = 27. </code></pre>
+</div>
 <div id="in-and-out-of-sample-error" class="section level4">
 <h4>In and out of sample error</h4>
+<p>In sample error is the error for the predictions on the new training set (not the original training set). Out of sample error is the prediction error on the hold-out set.</p>
 <pre><code>In sample error(%) 0.0000 (accuracy: 100.0000)</code></pre>
 <pre><code>Out of sample error(%)  0.2038 (accuracy: 99.7962)</code></pre>
 </div>
 <div id="oob-error" class="section level4">
 <h4>OOB error</h4>
+<p>The out-of-bag error is shown below. It agrees quite closely with the out-of-sample error. Because both error estimates are so low, or in other words, because the prediction accuracy is &gt;99%, there is no need to train a second model using a different method.</p>
 <pre><code>OOB error(%)  0.1847 (accuracy: 99.8153)</code></pre>
 </div>
 </div>
