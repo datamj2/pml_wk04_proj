@@ -3,6 +3,7 @@ title: "Predicting type of activity from movement data"
 author: "MJ"
 date: "April 26, 2017"
 output: html_document
+
 ---
 
 ```{r setup, include=FALSE}
@@ -53,7 +54,7 @@ The caret package in R uses a bootstrap method (by default) to partition the dat
 ####Out-of-bag error
 Because of the way the caret package builds the random forest model (using either the bootstrap or the cv method), a separate cross-validation step is not necessary. In effect, cross-validation occurs during model building. For each partition of the training set, that is, for each bag, there is also a validation set, which contain the out-of-bag (OOB) observations. The observations in the validation sets can be used to estimate the error on a test set (ie hold-out set), that is, a set that was not used to train the model. This is known as OOB error, and is a good predictor of error in a hold-out set.
 
-If the random forest method does not generate high enough accuracy (>99%, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md), then a second model will be built using the general bagging method (gbm) in caret. This high accuracy is necessary because the probabililty of correctly predicting 20 cases is 0.99^20 = 0.82.
+If the random forest method does not generate high enough accuracy (>99%, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md), then a second model will be built using the generalized boosted regression model (gbm) in caret. This high accuracy is necessary because the probabililty of correctly predicting 20 cases is 0.99^20 = 0.82.
 
 ##Split into training and test sets
 Because the original training data set is large (nrow=19622), I can use a 60-20-20 split resulting in: a new training set, a validation set, and a test or hold-out set. Because I'm using the random forest method in the caret package - which automatically performs cross-validation (see above) - I will partition the original training data using an 80-20 split: a new training set, and a hold-out set. Note that if the OOB error is used, this partitioning is not necessary, but I will use a hold-out set (20% split) as a second check on the generalizability of the model.
@@ -149,7 +150,7 @@ The oob error is listed in the final model, and can be calculated from the confu
 mr2$finalModel
 ```
 
-```{r}
+```{r cache=T}
 oob<-mr2$finalModel$err.rate[500,1]*100
 ## OR
 # oob<-100-100*sum(diag(cm[,1:5]))/sum((cm[,1:5]))
@@ -158,8 +159,41 @@ cat(sprintf('OOB error(%%)  %2.4f (accuracy: %2.4f)',oob,100-oob))
 ```
 
 The out-of-bag error agrees quite closely with the out-of-sample error. Because both error estimates are so low, or in other words, because the prediction accuracy is so high (>99%), there is no need to train a second model using a different method.
-<br>
-<br>
-<br>
-<br>
 
+####Variable importance
+Variable (predictor) importance in descending order of importance appears in Table 1.
+```{r echo=T,eval=F}
+vi<-varImp(mr2)
+```
+
+```{r }
+library(caret)
+library(randomForest)
+vi<-varImp(mr2)
+vi3<-data.frame(vi[1])
+
+names(vi3[1])<-"predictor"
+predictor<-row.names(vi3)
+vi_use<-data.frame(predictor,vi3[,1])
+names(vi_use)<-c("predictor","Overall")
+
+ind<-sort(vi_use[,2],index.return=T,decreasing=T)
+ind1<-data.frame(ind[2])
+
+vi_use<-vi_use[ind1$ix,]
+# rown<-row.names(vi_use)
+row.names(vi_use)<-1:53
+
+library(knitr)
+tab_cap<-"Table 1. List of top 10 predictors in descending order of importance"
+kable(vi_use[1:10,],format="html",digits=2,caption=tab_cap)
+
+
+# kable(sd_table,digits = c(2,2),caption=tab_cap,style="multiline")
+```
+
+
+<br>
+<br>
+<br>
+<br>
