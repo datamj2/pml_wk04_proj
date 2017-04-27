@@ -127,7 +127,7 @@ $(document).ready(function () {
 <p>I used a publicly available human activity dataset to predict six types of exercise activity. Data was collected from six participants who wore accelerometers strapped to their persons (belt, forearm, arm) and to a dumbell. The subjects performed barbell lifts five ways: both incorrectly and correctly. The accelerometer data was then used to train a machine learning algorithm and assess its performance on a hold-out data set.</p>
 <div id="exploratory-analysis" class="section level2">
 <h2>Exploratory analysis</h2>
-<p>The original training and test sets were obtained from ******. The structure of the first 10 columns is shown below.</p>
+<p>The original training and test sets are described at <a href="http://groupware.les.inf.puc-rio.br/har" class="uri">http://groupware.les.inf.puc-rio.br/har</a> (see WLE Dataset). The structure of the first 10 columns is shown below.</p>
 <pre><code>'data.frame':   19622 obs. of  10 variables:
  $ X                   : int  1 2 3 4 5 6 7 8 9 10 ...
  $ user_name           : Factor w/ 6 levels &quot;adelmo&quot;,&quot;carlitos&quot;,..: 2 2 2 2 2 2 2 2 2 2 ...
@@ -238,7 +238,7 @@ outsample_acc&lt;-100*(sum(ind)/length(ts2$class)) # out of sample accuracy</cod
 </div>
 <div id="oob-error" class="section level4">
 <h4>OOB error</h4>
-<p>The oob error is listed in the final model, and can be calculated from the confusion matrix (sum of diagonal/sum of entire confusion matrix). It is reprinted to 4 decimal places below. The OOB error differs from the in-sample error (see above) because the in-sample error is calculated from the model predictions on the entire new training set, while the OOB error is calculated on a subset of the new training set (calculated on the out-of-bag observations).</p>
+<p>The oob error is listed in the final model, and can be calculated from the confusion matrix (sum of diagonal/sum of entire confusion matrix). It is reprinted to 4 decimal places below. The OOB error differs from the in-sample error (see above) because the in-sample error is calculated from the model predictions on the entire new training set, while the OOB error is calculated calculated on the out-of-bag observations using only those trees where the observations were excluded.</p>
 <pre class="r"><code>mr2$finalModel</code></pre>
 <pre><code>
 Call:
@@ -256,7 +256,7 @@ C    0    6 2732    0    0 0.0021913806
 D    0    0    7 2565    1 0.0031092110
 E    0    0    0    4 2882 0.0013860014</code></pre>
 <pre><code>OOB error(%)  0.1847 (accuracy: 99.8153)</code></pre>
-<p>The out-of-bag error agrees quite closely with the out-of-sample error. Because both error estimates are so low, or in other words, because the prediction accuracy is so high (&gt;99%), there is no need to train a second model using a different method. .</p>
+<p>The out-of-bag error agrees quite closely with the out-of-sample error. Because both error estimates are so low, or in other words, because the prediction accuracy is so high (&gt;99%), there is no need to train a second model using a different method. <br> <br> <br> <br></p>
 </div>
 </div>
 

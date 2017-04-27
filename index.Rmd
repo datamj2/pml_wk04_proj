@@ -106,7 +106,7 @@ registerDoSEQ()
 ```
 
 ```{r }
-# I have trained the model previously and saved it in order to load it now
+# To save time, I have trained the model previously (using the code from above) and saved it in order to load it now
 load("mr2_80.rda")
 # summary(mr2$finalModel)
  # mr2$finalModel
@@ -143,7 +143,7 @@ cat(sprintf('Out of sample error(%%)  %2.4f (accuracy: %2.4f)',outsample_err,out
 As expected, the out of sample error is higher than the in sample error.
 
 ####OOB error
-The oob error is listed in the final model, and can be calculated from the confusion matrix (sum of diagonal/sum of entire confusion matrix). It is reprinted to 4 decimal places below. The OOB error differs from the in-sample error (see above) because the in-sample error is calculated from the model predictions on the entire new training set, while the OOB error is calculated on a subset of the new training set (calculated on the out-of-bag observations).
+The oob error is listed in the final model, and can be calculated from the confusion matrix (sum of diagonal/sum of entire confusion matrix). It is reprinted to 4 decimal places below. The OOB error differs from the in-sample error (see above) because the in-sample error is calculated from the model predictions on the entire new training set, while the OOB error is calculated calculated on the out-of-bag observations using only those trees where the observations were excluded.
 
 ```{r echo=T}
 mr2$finalModel
@@ -158,4 +158,8 @@ cat(sprintf('OOB error(%%)  %2.4f (accuracy: %2.4f)',oob,100-oob))
 ```
 
 The out-of-bag error agrees quite closely with the out-of-sample error. Because both error estimates are so low, or in other words, because the prediction accuracy is so high (>99%), there is no need to train a second model using a different method.
-.
+<br>
+<br>
+<br>
+<br>
+
