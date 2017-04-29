@@ -13,8 +13,16 @@ knitr::opts_chunk$set(comment = NA)
 knitr::opts_chunk$set(cache = T)
 # https://datamj2.github.io/pml_wk04_proj/
 ```
+<br>
 
-I used a publicly available human activity dataset to predict six types of exercise activity. Data was collected from six participants who wore accelerometers strapped to their persons (belt, forearm, arm) and to a dumbell. The subjects performed barbell lifts five  ways: both incorrectly and correctly. The accelerometer data was then used to train a machine learning algorithm and assess its performance on a hold-out data set.
+####Note
+The rmarkdown and html file for this project are at https://github.com/datamj2/pml_wk04_proj
+<br>
+<br>
+<br>
+
+##Introduction
+I used a publicly available human activity dataset to predict five types of exercise activity. Data was collected from six participants who wore accelerometers strapped to their persons (belt, forearm, arm) and to a dumbell. The subjects performed barbell lifts five  ways: both incorrectly and correctly. The accelerometer data was then used to train a machine learning algorithm and assess its performance on a hold-out data set.
 
 
 ##Exploratory analysis
@@ -27,7 +35,7 @@ str(tr[,1:10])
 
 cat(sprintf('Original training set dimensions, rows x cols: %i x %i ',dim(tr)[1],dim(tr)[2]))
 ```
-There are 160 features (columns) in the data set. The first seven columns are consist of an index column, name, three timestamp columns, a new_window and a num_window column. The outcome variable is 'classe', which is a factor variable coding the 5 activity types (A-E). There appear to be a large number of columns that contain mostly NA values. The remaining columns appear to contain the accelerometer data. The new_window column contains two entries: "no" and "yes". The "yes" rows contain aggregated accelerometer data and the raw accelerometer data. The aggregated data appear to occur only in the NA columns, and seem to be the only non-NA entries in these columns, at least for most of the rows. Some of the NA-columns are also coded as factors, while others are integer or numeric. The rest of the acceleromter data columns are coded as numeric or integer values.
+There are 160 features (columns) in the data set. The first seven columns consist of an index column, subject name, three timestamp columns, a new_window and a num_window column. The outcome variable is 'classe', which is a factor variable coding the 5 activity types (A-E). There appear to be a large number of columns that contain mostly NA values. The remaining columns appear to contain the accelerometer data. The new_window column contains two entries: "no" and "yes". The "yes" rows contain aggregated accelerometer data and the raw accelerometer data. The num_window columns contain a number identifying the time window. The aggregated data appear to occur only in the NA columns, and seem to be the only non-NA entries in these columns, at least for most of the rows. Some of the NA-columns are also coded as factors, while others are integer or numeric. The rest of the acceleromter data columns are coded as numeric or integer values, collected. over a time window.
 
 Figure 1 is a plot of the proportion of NA values for each column. The columns have either 0% NA values or 97.9% NA values, with about 1.7 times as many of the latter compared to the former.
 
@@ -57,11 +65,11 @@ The caret package in R uses a bootstrap method (by default) to partition the dat
 ###Out-of-bag error
 Because of the way the caret package builds the random forest model (using either the bootstrap or the cv method), a separate cross-validation step is not necessary. In effect, cross-validation occurs during model building. For each partition of the training set, that is, for each bag, there is also a validation set, which contain the out-of-bag (OOB) observations. The observations in the validation sets can be used to estimate the error on a test set (ie hold-out set), that is, a set that was not used to train the model. This is known as OOB error, and is a good predictor of error in a hold-out set.
 
-If the random forest method does not generate high enough accuracy (>99%, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md), then a second model will be built using the generalized boosted regression model (gbm) in caret. This high accuracy is necessary because the probabililty of correctly predicting 20 cases is 0.99^20 = 0.82.
+If the random forest method does not generate high enough accuracy (>99%, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md), then a second model will be built using the generalized boosted regression model (gbm) in caret. This high accuracy is necessary because the probabililty of correctly predicting 20 cases with 99% accuracy is 0.99^20 = 0.82, while the probability of correctly predicting 20 cases with, say, 90% accuracy is 0.90^20 = 0.12.
 <br>
 
-##Split into training and test sets
-The original training data set seems large enough (nrow=19622) to use a 60-20-20 split resulting in: a new training set, a validation set, and a new test or hold-out set. However, because I'm using the random forest method in the caret package - which automatically performs cross-validation (see above) - I will partition the original training data using an 80-20 split: a new training set, and a hold-out set. Note that if the OOB error is used, this partitioning is not necessary, but I will use a hold-out set (20% split) as a second check on the generalizability of the model.
+##Split into training and test/hold-out sets
+The original training data set seems large enough (nrow=19622) to use a 60-20-20 split resulting in: a new training set, a validation set, and a new test or hold-out set. However, because I'm using the random forest method in the caret package - using cross-validation resampling to train the model and obtain an OOB error (see above) - I will partition the original training data using an 80-20 split: a new training set, and a hold-out set. Note that if the OOB error is used, this partitioning is not necessary, but I will use a hold-out set (20% split) as a second check on the generalizability of the model.
 
 ```{r cache=T, echo=T}
 library(caret)
@@ -117,7 +125,7 @@ load("mr2_80_prox.rda")
  # mr2$finalModel
 mr2
 ```
-The information above confirms that a 5-fold cross-validation resampling method was used, and that the highest accuracy was obtained with a random subset of 27 predictors (mtry=27) used at each node. (See Rstudio help documentation (?train, ?randomForest, http://topepo.github.io/caret/train-models-by-tag.html#Random_Forest) for mtry defintion).
+The information above confirms that a 5-fold cross-validation resampling method was used, and that the highest accuracy was obtained with a random subset of 27 predictors (mtry=27) used at each node. (See Rstudio help documentation (?train, ?randomForest, http://topepo.github.io/caret/train-models-by-tag.html#Random_Forest for mtry defintion).
 <br>
 
 ###In and out of sample error
@@ -154,7 +162,7 @@ As expected, the out of sample error is higher than the in sample error.
 <br>
 
 ###OOB error
-The oob error is listed in the final model, and can be calculated from the confusion matrix (sum of diagonal/sum of entire confusion matrix). It is reprinted to 4 decimal places below. The OOB error differs from the in-sample error (see above) because the in-sample error is calculated from the model predictions on the entire new training set, while the OOB error is calculated calculated on the out-of-bag observations using only those trees where the observations were excluded.
+The oob error is listed in the final model, and can be calculated from the confusion matrix (sum of diagonal/sum of entire confusion matrix). It is reprinted to 4 decimal places below. The OOB error differs from the in-sample error (see above) because the in-sample error is calculated from the model predictions on the entire new training set, while the OOB error is calculated on the out-of-bag observations using only those trees where the oob observations were excluded.
 
 ```{r echo=T}
 mr2$finalModel
@@ -172,7 +180,7 @@ The out-of-bag error agrees quite closely with the out-of-sample error. Because 
 <br>
 
 ###Variable importance
-Table 1 lists the ten most important variables (predictors) and ten least important variables (apparently based on Gini).
+Table 1 lists the ten most important variables (predictors) and ten least important variables (based on the Gini index).
 ```{r echo=T,eval=F}
 vi<-varImp(mr2)
 ```
@@ -211,7 +219,7 @@ kable(tab1,style="multiline",digits=2,caption=tab_cap)
 <br>
 
 ###Class centers
-Figure 2 plots the class centers for plots of the two most important variables and two least important variables from Table 1. Although there is no clear clustering in either of the top panels, the class centers are better separated for the two most important variables compared to the two least important variables.
+Figure 2 plots the class centers for plots of the two most important variables and two least important variables from Table 1. Although there is no clear clustering of the individual data points in either of the top panels, the class centers are better separated for the two most important variables compared to the two least important variables (see bottom panels).
 ```{r fig.cap=fig2_cap}
 tr2P <- classCenter(tr2[,-54], tr2$classe, mr2$finalModel$prox)
 tr2P <- as.data.frame(tr2P); 
