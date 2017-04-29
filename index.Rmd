@@ -10,6 +10,7 @@ output: html_document
 knitr::opts_chunk$set(echo = F)
 knitr::opts_chunk$set(message = F)
 knitr::opts_chunk$set(comment = NA)
+knitr::opts_chunk$set(cache = T)
 # https://datamj2.github.io/pml_wk04_proj/
 ```
 
@@ -47,17 +48,20 @@ fig1_cap="Figure 1. Proportion of NAs for each predictor. There are two levels: 
 
 ##Machine learning considerations
 I will use the random forest method to train the predictive model because of its high accuracy (as noted in the lecture). The random forest uses bagging, which improves accuracy and reduces variance, but reduces interpretability (ref: *Introduction to Statistical Learning (6th printing)*, by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani, Springer Science+Business Media, NY). At each split (node) of the tree, a different random subset of predictors is used, rather than splitting each node using the full set of predictors. This reduces correlations amongst the bagged trees, due for example, to the presence of a few strong predictors. Thus, using a random subset of predictors (where the size of the subset does not change) reduces variability and increases the reliability of the model. 
+<br>
 
-####Cross-validation method
+###Cross-validation method
 The caret package in R uses a bootstrap method (by default) to partition the data (n=25). This can be time-consuming for this data set when using a personal computer. Another method to partition the data is k-fold cross validation (cv, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md). It has been noted that k=5 reduces computational time without greatly reducing accuracy. With this partitioning method the data set is partitioned 5 times, and the model trained on the resulting partitions.
+<br>
 
-####Out-of-bag error
+###Out-of-bag error
 Because of the way the caret package builds the random forest model (using either the bootstrap or the cv method), a separate cross-validation step is not necessary. In effect, cross-validation occurs during model building. For each partition of the training set, that is, for each bag, there is also a validation set, which contain the out-of-bag (OOB) observations. The observations in the validation sets can be used to estimate the error on a test set (ie hold-out set), that is, a set that was not used to train the model. This is known as OOB error, and is a good predictor of error in a hold-out set.
 
 If the random forest method does not generate high enough accuracy (>99%, see https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-requiredModelAccuracy.md), then a second model will be built using the generalized boosted regression model (gbm) in caret. This high accuracy is necessary because the probabililty of correctly predicting 20 cases is 0.99^20 = 0.82.
+<br>
 
 ##Split into training and test sets
-Because the original training data set is large (nrow=19622), I can use a 60-20-20 split resulting in: a new training set, a validation set, and a test or hold-out set. Because I'm using the random forest method in the caret package - which automatically performs cross-validation (see above) - I will partition the original training data using an 80-20 split: a new training set, and a hold-out set. Note that if the OOB error is used, this partitioning is not necessary, but I will use a hold-out set (20% split) as a second check on the generalizability of the model.
+The original training data set seems large enough (nrow=19622) to use a 60-20-20 split resulting in: a new training set, a validation set, and a new test or hold-out set. However, because I'm using the random forest method in the caret package - which automatically performs cross-validation (see above) - I will partition the original training data using an 80-20 split: a new training set, and a hold-out set. Note that if the OOB error is used, this partitioning is not necessary, but I will use a hold-out set (20% split) as a second check on the generalizability of the model.
 
 ```{r cache=T, echo=T}
 library(caret)
@@ -74,7 +78,7 @@ cat(sprintf('hold out set dimensions after partition (rows x cols): %i x %i ',di
 
 
 ##Feature selection
-Columns with high numbers of NA will add to the computational demands of training the machine language algorithm, but may not appreciably increase the predictive accuracy. For that reason, the columns containing large proportions of NAs will be removed from the training set. The first six columns from training set will also be removed, because they are not expected to add much to the final model accuracy (the seventh column may be useful). Therefore, the machine language algorithm will be trained using mainly the windowed accelerometer data.
+Columns with high numbers of NA will add to the computational demands of training the machine language algorithm, but may not appreciably increase the predictive accuracy. For that reason, the columns containing large proportions of NAs will be removed from the training set. The first six columns from training set will also be removed, because they are not expected to add much to the final model accuracy (the seventh column, num_window, may be useful). Therefore, the machine language algorithm will be trained using mainly the windowed accelerometer data.
 
 ```{r echo=T}
 tr2<-tr2[colSums(!is.na(tr)) > nrow(tr) * 0.5]
@@ -88,7 +92,7 @@ Note that only the new training set will be reduced in (column) size: removing c
 
 ##Results
 
-####Random forest model
+###Random forest model
 ```{r eval=F,echo=T}
 # the following parallel and trainControl is taken from https://github.com/lgreski/datasciencectacontent/blob/master/markdown/pml-randomForestPerformance.md
 fitControl <- trainControl(method = "cv",
@@ -100,7 +104,7 @@ cluster <- makeCluster(detectCores() - 1) # convention to leave 1 core for OS
 registerDoParallel(cluster)
 
 set.seed(1452)
-mr2<-train(classe ~ .,data=tr2,method="rf",trControl=fitControl)
+mr2<-train(classe ~ .,data=tr2,method="rf",trControl=fitControl,prox=T)
 
 stopCluster(cluster)
 registerDoSEQ()
@@ -108,15 +112,15 @@ registerDoSEQ()
 
 ```{r }
 # To save time, I have trained the model previously (using the code from above) and saved it in order to load it now
-load("mr2_80.rda")
+load("mr2_80_prox.rda")
 # summary(mr2$finalModel)
  # mr2$finalModel
 mr2
 ```
-The information above confirms that a 5-fold cross-validation resampling method was used, and that the highest accuracy was obtained with a random subset of 27 predictors (mtry=27) used at each node.
+The information above confirms that a 5-fold cross-validation resampling method was used, and that the highest accuracy was obtained with a random subset of 27 predictors (mtry=27) used at each node. (See Rstudio help documentation (?train, ?randomForest, http://topepo.github.io/caret/train-models-by-tag.html#Random_Forest) for mtry defintion).
+<br>
 
-
-####In and out of sample error
+###In and out of sample error
 In sample error is the error for the predictions on the new training set (not the original training set). Out of sample error is the prediction error on the hold-out set.
 ```{r echo=T}
 pr2<-predict(mr2,tr2)
@@ -139,11 +143,17 @@ outsample_acc<-100*(sum(ind)/length(ts2$class)) # out of sample accuracy
 ```
 
 ```{r}
+ps2b<-ps2
+```
+
+
+```{r}
 cat(sprintf('Out of sample error(%%)  %2.4f (accuracy: %2.4f)',outsample_err,outsample_acc ))
 ```
 As expected, the out of sample error is higher than the in sample error.
+<br>
 
-####OOB error
+###OOB error
 The oob error is listed in the final model, and can be calculated from the confusion matrix (sum of diagonal/sum of entire confusion matrix). It is reprinted to 4 decimal places below. The OOB error differs from the in-sample error (see above) because the in-sample error is calculated from the model predictions on the entire new training set, while the OOB error is calculated calculated on the out-of-bag observations using only those trees where the observations were excluded.
 
 ```{r echo=T}
@@ -159,9 +169,10 @@ cat(sprintf('OOB error(%%)  %2.4f (accuracy: %2.4f)',oob,100-oob))
 ```
 
 The out-of-bag error agrees quite closely with the out-of-sample error. Because both error estimates are so low, or in other words, because the prediction accuracy is so high (>99%), there is no need to train a second model using a different method.
+<br>
 
-####Variable importance
-Variable (predictor) importance in descending order of importance appears in Table 1.
+###Variable importance
+Table 1 lists the ten most important variables (predictors) and ten least important variables (apparently based on Gini).
 ```{r echo=T,eval=F}
 vi<-varImp(mr2)
 ```
@@ -184,14 +195,74 @@ vi_use<-vi_use[ind1$ix,]
 # rown<-row.names(vi_use)
 row.names(vi_use)<-1:53
 
+spacer<-data.frame(rep(c("                     "),10))
+                   
+tab1<-cbind(vi_use[1:10,],spacer,vi_use[44:53,])
+names(tab1)<-c("10 most important","Overall","","10 least important","Overall")
+
 library(knitr)
-tab_cap<-"Table 1. List of top 10 predictors in descending order of importance"
-kable(vi_use[1:10,],format="html",digits=2,caption=tab_cap)
+tab_cap<-"Table 1. List of 10 most and least important predictors, in descending order of importance."
+# kable(vi_use[1:10,],format="html",digits=2,caption=tab_cap)
+kable(tab1,style="multiline",digits=2,caption=tab_cap)
 
 
 # kable(sd_table,digits = c(2,2),caption=tab_cap,style="multiline")
 ```
+<br>
 
+###Class centers
+Figure 2 plots the class centers for plots of the two most important variables and two least important variables from Table 1. Although there is no clear clustering in either of the top panels, the class centers are better separated for the two most important variables compared to the two least important variables.
+```{r fig.cap=fig2_cap}
+tr2P <- classCenter(tr2[,-54], tr2$classe, mr2$finalModel$prox)
+tr2P <- as.data.frame(tr2P); 
+tr2P$classe <- rownames(tr2P)
+g1 <- ggplot(data=tr2,aes(x=num_window, y=roll_belt,col=classe)) + scale_x_continuous(limits = c(-50, 900)) + scale_y_continuous(limits = c(-35, 170)) + theme_bw()
+g1b<-g1 + geom_point() + geom_point(aes(x=num_window,y=roll_belt,col=classe),size=7,shape=9,data=tr2P) + ggtitle("Two most important predictors") + theme(plot.title = element_text(size = 12))
+g1c<-g1 + geom_point(aes(x=num_window,y=roll_belt,col=classe),size=7,shape=9,data=tr2P)
+
+g2 <- ggplot(data=tr2,aes(x=gyros_forearm_x, y=gyros_arm_z,col=classe)) + scale_x_continuous(limits = c(-27, 5)) + scale_y_continuous(limits = c(-2.5, 3.3)) + theme_bw()
+g2b<-g2 + geom_point() + geom_point(aes(x=gyros_forearm_x,y=gyros_arm_z,col=classe),size=7,shape=9,data=tr2P) + ggtitle("Two least important predictors") + theme(plot.title = element_text(size = 12))
+g2c<-g2 + geom_point(aes(x=gyros_forearm_x,y=gyros_arm_z,col=classe),size=7,shape=9,data=tr2P)
+
+fig2_cap<-"Figure 2. The two most important predictors are plotted by class (ie classe) in the first column. The class centers appear in both panels; individual observations appear only in the top panel. The two least important predictors are plotted in the right column."
+
+library(grid)
+library(gridExtra)
+grid.arrange(g1b,g2b,g1c,g2c,ncol=2,top=textGrob("Figure 2", gp=gpar(cex=1.2,fontface="bold"), just="top"))
+
+```
+
+```{r}
+# ts_temp<-ts2
+# 
+# # 
+# # dim(ts_temp)
+# # length(ps2b)
+# 
+# ts_temp$correct<-ps2b==ts_temp$classe
+# # table(ps2b,ts_temp$classe)
+# 
+# ind<-which(ts_temp$correct==T)
+# ts_tempT<-ts_temp[ind,]
+# ind<-which(ts_temp$correct==F)
+# ts_tempF<-ts_temp[ind,]
+# ind<-which(ts_tempF$classe=="B")
+# ts_tempFB<-ts_tempF[ind,]
+# 
+# ind<-which(ts_tempF$classe=="C")
+# ts_tempFC<-ts_tempF[ind,]
+# 
+# 
+# g1<-ggplot(ts_tempT,aes(x=num_window,y=roll_belt,col=correct,alpha=.1),shape=1)
+# g1<-g1 + geom_point() + geom_point(aes(x=num_window,y=roll_belt,col=classe,alpha=1),size=5,shape=13,data=ts_tempF)
+# # g + geom_point() + geom_point(aes(x=num_window,y=roll_belt,col=classe,alpha=1),size=5,shape=13,data=ts_tempF)
+# 
+# g2<-ggplot(ts_tempT,aes(x=gyros_arm_z,y=gyros_forearm_x,col=correct,alpha=.1),shape=1)
+# g2<-g2 + geom_point() + geom_point(aes(x=gyros_arm_z,y=gyros_forearm_x,col=classe,alpha=1),size=5,shape=13,data=ts_tempF)
+# 
+# library(gridExtra)
+# grid.arrange(g1,g2,ncol=2)
+```
 
 <br>
 <br>
